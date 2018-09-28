@@ -95,11 +95,11 @@ L.DistanceGrid.prototype = {
 						for (k = 0, len = cell.length; k < len; k++) {
 							obj = cell[k];
 							dist = this._sqDist(objectPoint[L.Util.stamp(obj)], point);
-							if (zoom < 5 && (dist < closestDistSq ||
-                                dist <= closestDistSq && closest === null)) {
-							    closestDistSq = dist;
-                                closest = obj;
-                                continue;
+							if (zoom < 5 && (dist < closestDistSq || 
+									 dist <= closestDistSq && closest === null)) {
+								closestDistSq = dist;
+								closest = obj;
+								continue;
 							}
 							if (zoom > 8) {
 							    l = this._findAChildByCounty(obj);
@@ -109,7 +109,7 @@ L.DistanceGrid.prototype = {
 							    filter = voivodeship;
 							}
 							if (l === filter && dist < closestDistSq ||
-							    l === filter && dist <= closestDistSq && closest === null) {
+							    		l === filter && dist <= closestDistSq && closest === null) {
 								closestDistSq = dist;
 								closest = obj;
 								l = false;
