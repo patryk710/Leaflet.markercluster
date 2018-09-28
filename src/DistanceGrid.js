@@ -73,13 +73,16 @@ L.DistanceGrid.prototype = {
 		}
 	},
 
-	getNearObject: function (point) {
+	getNearObject: function (point, voivodeship, county, zoom) {
 		var x = this._getCoord(point.x),
 		    y = this._getCoord(point.y),
-		    i, j, k, row, cell, len, obj, dist,
+		    i, j, k,
+		    l = false,
+		    row, cell, len, obj, dist,
 		    objectPoint = this._objectPoint,
 		    closestDistSq = this._sqCellSize,
-		    closest = null;
+		    closest = null,
+		    filter;
 
 		for (i = y - 1; i <= y + 1; i++) {
 			row = this._grid[i];
@@ -92,10 +95,24 @@ L.DistanceGrid.prototype = {
 						for (k = 0, len = cell.length; k < len; k++) {
 							obj = cell[k];
 							dist = this._sqDist(objectPoint[L.Util.stamp(obj)], point);
-							if (dist < closestDistSq ||
-								dist <= closestDistSq && closest === null) {
+							if (zoom < 5 && (dist < closestDistSq ||
+                                dist <= closestDistSq && closest === null)) {
+							    closestDistSq = dist;
+                                closest = obj;
+                                continue;
+							}
+							if (zoom > 8) {
+							    l = this._findAChildByCounty(obj);
+							    filter = county;
+							} else {
+							    l = this._findAChildByVoivodeship(obj);
+							    filter = voivodeship;
+							}
+							if (l === filter && dist < closestDistSq ||
+							    l === filter && dist <= closestDistSq && closest === null) {
 								closestDistSq = dist;
 								closest = obj;
+								l = false;
 							}
 						}
 					}
@@ -104,6 +121,26 @@ L.DistanceGrid.prototype = {
 		}
 		return closest;
 	},
+
+    _findAChildByVoivodeship: function (obj) {
+        if (obj.options.voivodeship) {
+            return obj.options.voivodeship;
+        } else if (obj._markers.length > 0) {
+            return this._findAChildByVoivodeship(obj._markers[0]);
+        } else {
+            return this._findAChildByVoivodeship(obj._childClusters[0]);
+        }
+    },
+
+    _findAChildByCounty: function (obj) {
+        if (obj.options.county) {
+            return obj.options.county;
+        } else if (obj._markers.length > 0) {
+            return this._findAChildByCounty(obj._markers[0]);
+        } else {
+            return this._findAChildByCounty(obj._childClusters[0]);
+        }
+    },
 
 	_getCoord: function (x) {
 		var coord = Math.floor(x / this._cellSize);

@@ -5,7 +5,7 @@
 export var MarkerClusterGroup = L.MarkerClusterGroup = L.FeatureGroup.extend({
 
 	options: {
-		maxClusterRadius: 80, //A cluster will cover at most this many pixels from its center
+		maxClusterRadius: 200, //A cluster will cover at most this many pixels from its center
 		iconCreateFunction: null,
 		clusterPane: L.Marker.prototype.options.pane,
 
@@ -14,7 +14,7 @@ export var MarkerClusterGroup = L.MarkerClusterGroup = L.FeatureGroup.extend({
 		zoomToBoundsOnClick: true,
 		singleMarkerMode: false,
 
-		disableClusteringAtZoom: null,
+		disableClusteringAtZoom: 11,
 
 		// Setting this to false prevents the removal of any clusters outside of the viewpoint, which
 		// is the default behaviour for performance reasons.
@@ -39,7 +39,7 @@ export var MarkerClusterGroup = L.MarkerClusterGroup = L.FeatureGroup.extend({
 		spiderLegPolylineOptions: { weight: 1.5, color: '#222', opacity: 0.5 },
 
 		// When bulk adding layers, adds markers in chunks. Means addLayers may not add all the layers in the call, others will be loaded during setTimeouts
-		chunkedLoading: false,
+		chunkedLoading: true,
 		chunkInterval: 200, // process markers for a maximum of ~ n milliseconds (then trigger the chunkProgress callback)
 		chunkDelay: 50, // at the end of each interval, give n milliseconds back to system/browser
 		chunkProgress: null, // progress callback: function(processed, total, elapsed) (e.g. for a progress indicator)
@@ -278,6 +278,8 @@ export var MarkerClusterGroup = L.MarkerClusterGroup = L.FeatureGroup.extend({
 					this._refreshClustersIcons();
 
 					this._topClusterLevel._recursivelyAddChildrenToMap(null, this._zoom, this._currentShownBounds);
+
+					this._map.fitBounds(fg.getBounds(), {padding: [4, 4]});
 				} else {
 					setTimeout(process, this.options.chunkDelay);
 				}
@@ -810,14 +812,14 @@ export var MarkerClusterGroup = L.MarkerClusterGroup = L.FeatureGroup.extend({
 	_defaultIconCreateFunction: function (cluster) {
 		var childCount = cluster.getChildCount();
 
-		var c = ' marker-cluster-';
-		if (childCount < 10) {
-			c += 'small';
-		} else if (childCount < 100) {
-			c += 'medium';
-		} else {
-			c += 'large';
-		}
+		var c = ' marker-cluster-medium';
+        /*if (childCount < 10) {
+            c += 'small';
+        } else if (childCount < 100) {
+            c += 'medium';
+        } else {
+            c += 'large';
+        }*/
 
 		return new L.DivIcon({ html: '<div><span>' + childCount + '</span></div>', className: 'marker-cluster' + c, iconSize: new L.Point(40, 40) });
 	},
@@ -936,7 +938,19 @@ export var MarkerClusterGroup = L.MarkerClusterGroup = L.FeatureGroup.extend({
 		//a simple function to return that number. Otherwise, we just have to
 		//use the function we've passed in.
 		if (typeof radius !== "function") {
-			radiusFn = function () { return radius; };
+			radiusFn = function (zoom) {
+                if (zoom === 10) {
+                    return 500;
+                } else if (zoom === 9) {
+                    return 150;
+                } else if (zoom === 8) {
+                    return 600;
+                } else if (zoom === 7) {
+                    return 300;
+                } else {
+                    return 150;
+                }
+            };
 		}
 
 		if (this.options.disableClusteringAtZoom !== null) {
@@ -961,6 +975,8 @@ export var MarkerClusterGroup = L.MarkerClusterGroup = L.FeatureGroup.extend({
 		var gridClusters = this._gridClusters,
 		    gridUnclustered = this._gridUnclustered,
 			minZoom = Math.floor(this._map.getMinZoom()),
+			voivodeship = layer.options.voivodeship,
+			county = layer.options.county,
 		    markerPoint, z;
 
 		if (this.options.singleMarkerMode) {
@@ -973,21 +989,21 @@ export var MarkerClusterGroup = L.MarkerClusterGroup = L.FeatureGroup.extend({
 		for (; zoom >= minZoom; zoom--) {
 			markerPoint = this._map.project(layer.getLatLng(), zoom); // calculate pixel position
 
-			//Try find a cluster close by
-			var closest = gridClusters[zoom].getNearObject(markerPoint);
-			if (closest) {
-				closest._addChild(layer);
-				layer.__parent = closest;
-				return;
-			}
+            //Try find a cluster close by
+            var closest = gridClusters[zoom].getNearObject(markerPoint, voivodeship, county, zoom);
+            if (closest) {
+                closest._addChild(layer);
+                layer.__parent = closest;
+                return;
+            }
 
 			//Try find a marker close by to form a new cluster with
-			closest = gridUnclustered[zoom].getNearObject(markerPoint);
-			if (closest) {
-				var parent = closest.__parent;
-				if (parent) {
-					this._removeLayer(closest, false);
-				}
+            closest = gridUnclustered[zoom].getNearObject(markerPoint, voivodeship, county, zoom);
+            if (closest) {
+                var parent = closest.__parent;
+                if (parent) {
+                    this._removeLayer(closest, false);
+                }
 
 				//Create new cluster with these 2 in it
 
