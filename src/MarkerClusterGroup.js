@@ -278,8 +278,6 @@ export var MarkerClusterGroup = L.MarkerClusterGroup = L.FeatureGroup.extend({
 					this._refreshClustersIcons();
 
 					this._topClusterLevel._recursivelyAddChildrenToMap(null, this._zoom, this._currentShownBounds);
-
-					this._map.fitBounds(fg.getBounds(), {padding: [4, 4]});
 				} else {
 					setTimeout(process, this.options.chunkDelay);
 				}
